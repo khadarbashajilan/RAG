@@ -12,4 +12,5 @@ dependencies = [
     "pypdf>=6.11.0",
     "python-dotenv>=1.2.2",
     "requests>=2.34.0",
+    "rich>=15.0.0",
 ]

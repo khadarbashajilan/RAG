@@ -3,17 +3,29 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 from langchain_mistralai import MistralAIEmbeddings
+from langchain_classic.memory import ConversationBufferWindowMemory
+from ui_cli import chat_loop
 
 load_dotenv()
 
+# =========================
+# EMBEDDINGS
+# =========================
+
 embeddings = MistralAIEmbeddings(model="mistral-embed")
+
+# =========================
+# VECTOR STORE
+# =========================
 
 vector_store = PineconeVectorStore(
     index_name="meditations-mistral",
     embedding=embeddings
 )
 
-
+# =========================
+# RETRIEVER
+# =========================
 
 retriever = vector_store.as_retriever(
     search_type = 'mmr',
@@ -24,8 +36,24 @@ retriever = vector_store.as_retriever(
     }
 )
 
+# =========================
+# LLM
+# =========================
+
 llm = ChatMistralAI(model_name="mistral-small-2603")
 
+# =========================
+# MEMORY
+# =========================
+
+memory = ConversationBufferWindowMemory(
+    k=25,  # remembers last 6 exchanges
+    return_messages=True
+)
+
+# =========================
+# PROMPT
+# =========================
 
 prompt = ChatPromptTemplate.from_messages(
     [
@@ -141,6 +169,9 @@ The goal is to help the user think clearly, act rightly, and remain steady in di
         (
             "human",
             """
+Previous Conversation:
+{chat_history}
+
 Teaching:
 {context}
 
@@ -151,27 +182,12 @@ Question:
     ]
 )
 
-print("RAG system Created!")
 
-print("0 for exit\n")
+
+# =========================
+# CHAT LOOP
+# =========================
 
 while True:
-    query = input("You : ")
-    if query == "0":
-        break
-    
-    docs = retriever.invoke(query)
-
-    context = "\n\n".join([doc.page_content for doc in docs])
-
-    final_prompt = prompt.invoke({
-        "context":context,
-        "question":query
-    })
-    
-    response = llm.invoke(final_prompt)
-
-    print(f"\n AI : {response.content}\n")
-
-
-
+    chat_loop(memory, retriever, prompt, llm)
+    break
