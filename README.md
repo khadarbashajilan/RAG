@@ -169,38 +169,46 @@ Grounding responses in retrieved source material to improve factual and thematic
 Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/marcus-aurelius-rag.git
-cd marcus-aurelius-rag
+git clone https://github.com/khadarbashajilan/RAG.git
+cd RAG
 ```
 
-Install dependencies:
+Install dependencies using uv:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
-### Environment Variables
+### Environment Configuration
 
-Create a `.env` file:
+Create a `.env` file from the provided example:
+
+```bash
+cp .env.example .env
+```
+
+Update the values inside `.env` with your credentials:
 
 ```env
 MISTRAL_API_KEY=your_mistral_api_key
 PINECONE_API_KEY=your_pinecone_api_key
 ```
 
-### Build Vector Database
+### Build the Vector Database
+
+Process *Meditations*, generate embeddings, and populate the Pinecone vector index:
 
 ```bash
-python db.py
+uv run db.py
 ```
 
-### Run Application
+### Run the Application
+
+Start the interactive Stoic assistant:
 
 ```bash
-python main.py
+uv run main.py
 ```
-
----
 
 ## Future Improvements
 
