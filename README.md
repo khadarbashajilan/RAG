@@ -24,7 +24,8 @@ The result is an AI assistant capable of providing practical Stoic insights whil
 * CLI-based chat interface with live spinner and Markdown-rendered panels
 * Automatic fallback across 11 free Gemini models on daily-quota exhaustion
 * Manual model switching and mid-session memory reset via slash commands
-* Modular and extensible codebase
+* One `stoic_rag` package with a single config module — no import-time network calls, no duplicated tunables
+* 50 unit tests covering query cleanup, model routing, config defaults, and quota handling — no API keys needed to run them
 
 ---
 
@@ -56,7 +57,7 @@ LangGraph Agent  ──  Summarization Middleware (over 2000 tokens, keep last 1
             │
             ▼
       Heuristic Query Cleanup (local, no API call)
-            │  "how do i dweal w fwar?" → "how do i deal with fear?"
+            │  "how do i dweal w fwar?" → "how do i deal w fear?"
             ▼
       Mistral Embeddings (mistral-embed, 1024-dim)
             │
@@ -169,16 +170,25 @@ Google enforces free-tier daily quotas per model, so exhausting one model does n
 
 ```text
 .
-├── Marcus-Aurelius-Meditations.pdf
-├── db.py                      # Vector DB ingest script
-├── main.py                    # Agent + checkpointer + tool + query cleanup
-├── models.py                  # Free-tier Gemini model rotation
-├── ui_cli.py                  # Rich CLI chat loop
+├── data/                            # Source PDF + SQLite memory (both gitignored)
+│   ├── Marcus-Aurelius-Meditations.pdf
+│   └── checkpoints.db               # conversation memory (deleted by run.sh)
+├── stoic_rag/                       # the package — 2 levels, no nesting
+│   ├── config.py                    # every tunable + env validation. Nothing else reads os.environ
+│   ├── query.py                     # typo/filler/out-of-scope cleanup (no API call)
+│   ├── prompts.py                   # the system prompt, as prose
+│   ├── models.py                    # ModelRouter + build_llm
+│   ├── retrieval.py                 # embeddings, vector store, retriever, search tool
+│   ├── memory.py                    # SqliteSaver + thread config
+│   ├── agent.py                     # build_agent() factory
+│   ├── session.py                   # retry loop + daily-quota rotation
+│   ├── cli.py                       # Rich rendering + slash commands
+│   └── ingest.py                    # PDF → chunks → Pinecone
+├── tests/                           # pytest, no network needed
 ├── pyproject.toml
 ├── .env.example
 ├── .gitignore
-├── checkpoints.db             # SQLite conversation memory (deleted by run.sh)
-└── run.sh                     # Env validation, memory wipe, launch
+└── run.sh                           # venv setup + memory wipe, then launch
 ```
 
 ---
@@ -261,10 +271,17 @@ Get your free Mistral API key from [Mistral AI Console](https://console.mistral.
 
 ### Build the Vector Database
 
+The source PDF is **not** committed (it is gitignored). Fetch a public-domain copy of *Meditations* and drop it in place:
+
+```bash
+mkdir -p data
+# then save your copy as data/Marcus-Aurelius-Meditations.pdf
+```
+
 Process *Meditations*, generate embeddings, and populate the Pinecone vector index:
 
 ```bash
-uv run db.py
+uv run stoic-rag-ingest
 ```
 
 Chunk IDs are derived from a SHA1 of the page content, so re-running is safe — already-stored chunks are skipped.
@@ -275,9 +292,17 @@ Chunk IDs are derived from a SHA1 of the page content, so re-running is safe —
 ./run.sh
 ```
 
-`run.sh` verifies the three required keys, creates the virtualenv if missing, deletes `checkpoints.db` for a clean slate, then launches the CLI.
+`run.sh` clears `data/checkpoints.db` for a clean slate, then launches `uv run stoic-rag`. Missing API keys are reported by name, with a link to each provider's console, and the app exits rather than failing later mid-conversation.
 
-Running `uv run main.py` directly also works, but skips env validation and keeps any existing conversation history.
+Running `uv run stoic-rag` directly also works, but keeps any existing conversation history.
+
+### Run the Tests
+
+```bash
+uv run pytest
+```
+
+The suite covers query cleanup, the model router, LLM parameter gating, config defaults, chunk-ID stability, and the retry/quota helpers. It needs no API keys and makes no network calls.
 
 ## Future Improvements
 

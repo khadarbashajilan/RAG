@@ -1,7 +1,7 @@
 [project]
-name = "rag"
+name = "stoic-rag"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Stoic mentor chatbot grounded in Marcus Aurelius' Meditations, via retrieval-augmented generation."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -18,3 +18,22 @@ dependencies = [
     "requests>=2.34.0",
     "rich>=15.0.0",
 ]
+
+[project.scripts]
+stoic-rag = "stoic_rag.cli:main"
+stoic-rag-ingest = "stoic_rag.ingest:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["stoic_rag"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,42 +1,22 @@
 #!/usr/bin/env bash
+# Launch the CLI. Env validation lives in stoic_rag.config so there is one
+# source of truth; this script only sets up the environment and clears memory.
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
-if [ ! -f .env ]; then
-    echo "Missing .env file."
-    echo "Create one with:"
-    echo "  GEMINI_API_KEY=your_gemini_api_key"
-    echo "  PINECONE_API_KEY=your_pinecone_api_key"
-    exit 1
-fi
-
-if ! grep -qE '^MISTRAL_API_KEY=.+$' .env; then
-    echo "MISTRAL_API_KEY is not set in .env"
-    exit 1
-fi
-
-if ! grep -qE '^GEMINI_API_KEY=.+$' .env; then
-    echo "GEMINI_API_KEY is not set in .env"
-    exit 1
-fi
-
-if ! grep -qE '^PINECONE_API_KEY=.+$' .env; then
-    echo "PINECONE_API_KEY is not set in .env"
-    exit 1
-fi
+rm -f data/checkpoints.db
 
 if command -v uv >/dev/null 2>&1; then
     if [ ! -d .venv ]; then
         echo "Creating virtualenv..."
         uv sync
     fi
-    rm -f checkpoints.db
-    exec uv run main.py "$@"
+    exec uv run stoic-rag "$@"
 fi
 
 if [ -x .venv/bin/python ]; then
-    exec .venv/bin/python main.py "$@"
+    exec .venv/bin/python -m stoic_rag.cli "$@"
 fi
 
 echo "No runner found."
